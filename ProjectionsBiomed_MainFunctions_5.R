@@ -328,7 +328,7 @@ findOptimalClusters <- function(X, method, ClusterNumberMethod, seed, nProc = 1,
                         NBres <- parallel::mclapply(c("all", "kl"), function(i) {
                           try(suppressMessages(NbClust::NbClust(data = X, diss = NULL, distance = "euclidean",
                                                                 min.nc = 2, max.nc = 9, method = method, index = i)), silent = FALSE)
-                        })
+                        }, mc.cores = nProc)
                         
                         # Check if the first trail was successful, else run NbClust method by method                      
                         if (!inherits(NBres[[1]], "try-error")) {

@@ -6,7 +6,7 @@ dfData = cbind.data.frame(Target = as.integer(as.factor(iris$Species)), iris[, 1
 
 # Set the working directory
 # setwd(dirname(rstudioapi::getSourceEditorContext()$path))
-setwd("/home/joern/.Datenplatte/Joerns Dateien/Aktuell/ProjectionsBiomed/08AnalyseProgramme/R")
+setwd("/home/joern/.Datenplatte/Joerns Dateien/Aktuell/ProjectionsBiomed/08AnalyseProgramme/R/projectionsPlots/")
 
 # Function to load the main functions file
 loadMainFunctions <- function() {
@@ -25,7 +25,9 @@ loadMainFunctions()
 
 # Example call
 # Create a data frame
-dfData <- cbind.data.frame(Target = as.integer(as.factor(iris$Species)), iris[, 1:4])
+
+dfData <- prepare_data(X = iris[, 1:4], Y = iris$Species)
+#dfData <- cbind.data.frame(Target = as.integer(as.factor(iris$Species)), iris[, 1:4])
 DatasetNames <- c("dfData")
 MethodsList <- c("PCA", "ICA", "MDS", "isomap", "tSNE", "Umap", "PLSDA")
 ClusterAlgsList <- c("none", "kmeans", "kmedoids", "ward.D2", "single", "average", "complete", "median", "centroid")

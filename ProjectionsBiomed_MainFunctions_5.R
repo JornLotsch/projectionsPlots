@@ -20,7 +20,8 @@ load_required_packages(REQUIRED_PACKAGES)
 
 # Main analysis function
 perform_analysis <- function(dataset_names, method_list, clustering_algorithms = "none",
-                             cluster_number_methods = "orig", label_points = TRUE, color_misclassified = FALSE) {
+                             cluster_number_methods = "orig", label_points = TRUE, color_misclassified = FALSE,
+                             dots_color_is = "Target", cells_color_is = "Cluster") {
   projections <- list()
 
   for (dataset_name in dataset_names) {
@@ -30,14 +31,65 @@ perform_analysis <- function(dataset_names, method_list, clustering_algorithms =
     if (is.null(dataset)) next
 
     projection_results <- apply_projection_methods(dataset, method_list)
-    plots_per_dataset <- process_and_create_plots(projection_results, method_list, clustering_algorithms,
-                                                  cluster_number_methods, dataset_name, label_points, color_misclassified)
+    plots_per_dataset <- process_and_create_plots(projections = projection_results, methods_list = method_list, cluster_algs = clustering_algorithms,
+                                                  cluster_number_methods =  cluster_number_methods, dataset_name = dataset_name,
+                                                  label_points = label_points, color_misclassified = color_misclassified, 
+                                                  dots_color_is = dots_color_is, cells_color_is = cells_color_is)
     projections[[dataset_name]] <- unlist(plots_per_dataset, recursive = FALSE)
   }
 
   return(projections)
 }
 
+prepare_data <- function(X, Y = NULL) {
+  # Convert input to a data frame if it is a matrix
+  if (is.matrix(X)) {
+    X <- as.data.frame(X)
+  }
+
+  # Validate input
+  if (!is.data.frame(X) && !is.matrix(X)) {
+    stop("Input must be a data frame or matrix.")
+  }
+
+  # If Y is not provided, check for "Target" in input
+  if (is.null(Y)) {
+    if (!"Target" %in% colnames(X)) {
+      stop("Column 'Target' is missing from the input.")
+    }
+    if (ncol(X) < 3) {
+      stop("Input must have at least three columns when 'Target' is included.")
+    }
+    data <- X
+
+  } else {
+    # If Y is provided separately
+    if (ncol(X) < 2) {
+      stop("Input matrix must have at least two columns.")
+    }
+
+    if (length(Y) != nrow(X)) {
+      stop("The length of Y must be equal to the number of rows in X.")
+    }
+
+    data <- as.data.frame(X)
+    data$Target <- Y
+  }
+
+  # Convert Target to numeric and provide a mapping message
+  if (!is.numeric(data$Target)) {
+    class_mapping <- as.integer(as.factor(data$Target))
+    levels <- levels(as.factor(data$Target))
+    data$Target <- class_mapping
+    class_map <- setNames(seq_along(levels), levels)
+
+    mapping_message <- paste(sprintf("'%s' is now class %d", names(class_map), class_map), collapse = ", ")
+
+    message("Class mapping: ", mapping_message)
+  }
+
+  return(data)
+}
 # Retrieve datasets
 retrieve_dataset <- function(dataset_name) {
   if (!exists(dataset_name, envir = .GlobalEnv)) {
@@ -79,21 +131,23 @@ apply_projection_methods <- function(dataset, methods_list) {
 
 # Process projections and create plots
 process_and_create_plots <- function(projections, methods_list, cluster_algs, cluster_number_methods,
-                                     dataset_name, label_points, color_misclassified) {
+                                     dataset_name, label_points, color_misclassified, dots_color_is, cells_color_is) {
   lapply(methods_list, function(method) {
     if (is.null(projections[[method]])) {
       warning("Projection for method ", method, " returned NULL. Skipping.")
       return(NULL)
     }
 
-    proj_result <- as.data.frame(projections[[method]]$Projected)
-    if (!is.data.frame(proj_result)) {
+    proj_data <- as.data.frame(projections[[method]]$Projected)
+    if (!is.data.frame(proj_data)) {
       warning("Error: Result for method ", method, " is not a data frame. Skipping.")
       return(NULL)
     }
 
-    clustering_plots <- apply_clustering(projections[[method]], proj_result, cluster_algs, cluster_number_methods,
-                                         dataset_name, method, label_points, color_misclassified)
+    clustering_plots <- apply_clustering(projection_result = projections[[method]], projected_data = proj_data, cluster_algs = cluster_algs, 
+                                         cluster_number_methods = cluster_number_methods,dataset_name =  dataset_name, 
+                                         method_name =method, label_points = label_points, color_misclassified = color_misclassified, 
+                                         dots_color_is = dots_color_is, cells_color_is = cells_color_is)
     names(clustering_plots) <- cluster_algs
     return(clustering_plots)
   })
@@ -101,7 +155,8 @@ process_and_create_plots <- function(projections, methods_list, cluster_algs, cl
 
 # Apply clustering algorithms and plot results
 apply_clustering <- function(projection_result, projected_data, cluster_algs, cluster_number_methods,
-                             dataset_name, method_name, label_points, color_misclassified) {
+                             dataset_name, method_name, label_points, color_misclassified, 
+                             dots_color_is, cells_color_is) {
   lapply(cluster_algs, function(cluster_alg) {
     tryCatch({
       if (is.null(projection_result$UniqueData$Target)) {
@@ -112,8 +167,10 @@ apply_clustering <- function(projection_result, projected_data, cluster_algs, cl
                                       method = cluster_alg, ClusterNumberMethod = cluster_number_method)
         clusters <- renameClusters(trueCls = projection_result$UniqueData$Target, clusters)
         combined_result <- create_combined_result(projected_data, clusters, projection_result)
-        plot <- create_projection_plot(combined_result, dataset_name, method_name, cluster_alg,
-                                       cluster_number_method, label_points, color_misclassified)
+        plot <- create_projection_plot(combined_result = combined_result, dataset_name = dataset_name, method_name = method_name, 
+                                         cluster_alg = cluster_alg, cluster_number_method = cluster_number_method,
+                                       label_points = label_points, color_misclassified = color_misclassified, 
+                                       dots_color_is = dots_color_is, cells_color_is = cells_color_is)
         return(plot)
       })
 
@@ -140,7 +197,7 @@ create_combined_result <- function(projected_data, clusters, projection_result) 
 
 # Create projection plot
 create_projection_plot <- function(combined_result, dataset_name, method_name, cluster_alg,
-                                   cluster_number_method, label_points, color_misclassified) {
+                                   cluster_number_method, label_points, color_misclassified, dots_color_is, cells_color_is) {
   plot <- plotVoronoiTargetProjection(
     X = combined_result[, 1:2],
     targets = combined_result$Target,
@@ -148,7 +205,9 @@ create_projection_plot <- function(combined_result, dataset_name, method_name, c
     labels = combined_result$Label,
     misclassified = combined_result$Misclassified,
     LabelPoints = label_points,
-    ColorMisClassified = color_misclassified
+    ColorMisClassified = color_misclassified,
+    dots_color_is = dots_color_is, 
+    cells_color_is = cells_color_is
   )
   plot_title <- paste(dataset_name, ": ", method_name, "- ", cluster_alg)
   if (cluster_alg != "none") {
@@ -495,7 +554,11 @@ renameClusters <- function(trueCls, currentCls, K = 9) {
 
 # Function to plot various versions of Voronoi cell presentation of projection and clustering results
 plotVoronoiTargetProjection <- function(X, targets, clusters = NULL,
-                                        labels = NULL, LabelPoints = FALSE, misclassified = NULL, ColorMisClassified = FALSE, palette_target = NULL, palette_cluster = NULL) {
+                                        labels = NULL, LabelPoints = FALSE, 
+                                        misclassified = NULL, ColorMisClassified = FALSE, 
+                                        dots_color_is = "Target", cells_color_is = "Cluster", 
+                                        palette_target = NULL, palette_cluster = NULL,
+                                        create_projection_plot) {
   
   # colorblind palette extended by random further colors
   cb_palette <- c(
@@ -550,6 +613,9 @@ plotVoronoiTargetProjection <- function(X, targets, clusters = NULL,
   plotData <- data.frame(Proj1 = X[, 1], Proj2 = X[, 2], Target = targets,
                          Clusters = clusters, Label = labels, Misclassified = misclassified)
   
+  ifelse(dots_color_is == "Target", plotData$DotsInformation <- plotData$Target, plotData$DotsInformation <- plotData$Clusters)
+  ifelse(cells_color_is == "Cluster", plotData$CellsInformation <- plotData$Clusters, plotData$CellsInformation <- plotData$Target)
+  
   # Voronoi diagram computation
   voronoiData <- deldir::deldir(plotData$Proj1, plotData$Proj2)
   
@@ -571,10 +637,10 @@ plotVoronoiTargetProjection <- function(X, targets, clusters = NULL,
   
   # Create the plot with ggplot2
   plot <- ggplot2::ggplot() +
-    ggplot2::geom_polygon(data = voronoi_df, ggplot2::aes(x = x, y = y, group = id, fill = as.factor(plotData$Clusters[id])),
+    ggplot2::geom_polygon(data = voronoi_df, ggplot2::aes(x = x, y = y, group = id, fill = as.factor(plotData$CellsInformation[id])),
                           alpha = 0.3, color = NA) +
     ggplot2::geom_point(data = plotData, ggplot2::aes(x = Proj1, y = Proj2,
-                                                      color = as.factor(Target), shape = as.factor(Target))) +
+                                                      color = as.factor(DotsInformation), shape = as.factor(DotsInformation))) +
     ggplot2::theme_light() +
     theme(legend.position = c(0.5, 0.08),
           legend.direction = "horizontal",
@@ -591,7 +657,7 @@ plotVoronoiTargetProjection <- function(X, targets, clusters = NULL,
   if (LabelPoints) {
     plot <- plot +
       ggrepel::geom_text_repel(data = plotData,
-                               ggplot2::aes(x = Proj1, y = Proj2, color = as.factor(Target),
+                               ggplot2::aes(x = Proj1, y = Proj2, color = as.factor(DotsInformation),
                                             label = Label, fontface = 2), vjust = -1, size = 3, max.overlaps = Inf)
   }
   

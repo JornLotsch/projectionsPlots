@@ -1,0 +1,8 @@
+Package: ProjectionsBiomedLibrary
+Type: Package
+Title: Projections Biomed Analysis Tools
+Version: 0.1.0
+Author: Your Name
+Maintainer: Your Name <your.email@example.com>
+Description: A library for performing biomed analysis using various projection and clustering methods.
+License: GPL-3

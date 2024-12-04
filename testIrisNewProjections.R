@@ -1,4 +1,4 @@
-dfData = cbind.data.frame(Target = as.integer(as.factor(iris$Species)), iris[, 1:4])
+# dfData = cbind.data.frame(Target = as.integer(as.factor(iris$Species)), iris[, 1:4])
 # 
 # dfData_projected <- performProjection(X = within(dfData, rm(Target)), method = "PCA", Target = dfData$Target)
 # 
@@ -29,7 +29,7 @@ loadMainFunctions()
 dfData <- prepare_data(X = iris[, 1:4], Y = iris$Species)
 #dfData <- cbind.data.frame(Target = as.integer(as.factor(iris$Species)), iris[, 1:4])
 DatasetNames <- c("dfData")
-MethodsList <- c("PCA", "ICA", "MDS", "isomap", "tSNE", "Umap", "PLSDA")
+MethodsList <- c("PCA", "ICA", "MDS", "isomap", "tSNE", "Umap")
 ClusterAlgsList <- c("none", "kmeans", "kmedoids", "ward.D2", "single", "average", "complete", "median", "centroid")
 ClusterNumberMethodsList <- "orig"
 
@@ -37,7 +37,12 @@ ClusterNumberMethodsList <- "orig"
 assign("dfData", dfData, envir = .GlobalEnv)
 
 # Create projections and plots
-projectionsAndPlots <- createProjectionsAndPlots(DatasetNames, MethodsList, ClusterAlgsList, ClusterNumberMethodsList, LabelPoints = FALSE, ColorMisClassified = F)
+set.seed(42)
+projectionsAndPlots <- perform_analysis(datasets = DatasetNames, projection_methods = MethodsList, 
+                                        clustering_methods =  ClusterAlgsList, cluster_number_methods = ClusterNumberMethodsList,
+                                        label_points = FALSE, highlight_misclassified = FALSE,
+                                        cluster_indices =  "cluster_accuracy",
+                                        highlight_best_clustering = TRUE)
 
 # # Extract all plots into a single list
 # allPlots <- unlist(lapply(projectionsAndPlots, function(projectionList) {
@@ -53,4 +58,6 @@ projectionsAndPlots <- createProjectionsAndPlots(DatasetNames, MethodsList, Clus
 
 
 # Example usage:
-combineAllPlots(projectionsAndPlots, MethodsList, ClusterAlgsList, ClusterNumberMethodsList)
+combine_all_plots(datasets = DatasetNames, projection_plots = projectionsAndPlots$projections_plots, 
+                  projection_methods = MethodsList, clustering_methods = ClusterAlgsList, 
+                  cluster_number_methods = ClusterNumberMethodsList)

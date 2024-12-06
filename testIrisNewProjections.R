@@ -26,10 +26,12 @@ loadMainFunctions()
 # Example call
 # Create a data frame
 
-dfData <- prepare_data(X = iris[, 1:4], Y = iris$Species)
+dfData <- prepare_dataset(input_X = iris[, 1:4], Target = iris$Species)
+# dfData <- prepare_data(X = within(mtcars, rm(gear)), Y = mtcars$gear)
+# dfData <- WineData
 #dfData <- cbind.data.frame(Target = as.integer(as.factor(iris$Species)), iris[, 1:4])
 DatasetNames <- c("dfData")
-MethodsList <- c("PCA", "ICA", "MDS", "isomap", "tSNE", "Umap")
+MethodsList <- c("PCA", "ICA", "IPCA", "MDS", "isomap", "tSNE", "Umap")
 ClusterAlgsList <- c("none", "kmeans", "kmedoids", "ward.D2", "single", "average", "complete", "median", "centroid")
 ClusterNumberMethodsList <- "orig"
 
@@ -42,7 +44,8 @@ projectionsAndPlots <- perform_analysis(datasets = DatasetNames, projection_meth
                                         clustering_methods =  ClusterAlgsList, cluster_number_methods = ClusterNumberMethodsList,
                                         label_points = FALSE, highlight_misclassified = FALSE,
                                         cluster_indices =  "cluster_accuracy",
-                                        highlight_best_clustering = TRUE)
+                                        highlight_best_clustering = TRUE, 
+                                        seed = 42)
 
 # # Extract all plots into a single list
 # allPlots <- unlist(lapply(projectionsAndPlots, function(projectionList) {
@@ -61,3 +64,4 @@ projectionsAndPlots <- perform_analysis(datasets = DatasetNames, projection_meth
 combine_all_plots(datasets = DatasetNames, projection_plots = projectionsAndPlots$projections_plots, 
                   projection_methods = MethodsList, clustering_methods = ClusterAlgsList, 
                   cluster_number_methods = ClusterNumberMethodsList)
+projectionsAndPlots$cluster_quality_results$best_combination
